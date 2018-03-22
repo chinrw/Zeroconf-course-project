@@ -14,42 +14,50 @@
 #include <pthread.h>
 
 #define BUFFER_SIZE 64
-#define MAX_CLIENTS 100
+#define MAX_CLIENTS 2
 
-fd_set readfds;
+#define STATE_NO_NAME_NO_CHOICE 0
+#define STATE_HAS_NAME_NO_CHOICE 1
+#define STATE_HAS_NAME_HAS_CHOICE 2
 
-void* TCP_function(void* arg);
+#define CHOICE_PAPER 0
+#define CHOICE_SCISSOR 1
+#define CHOICE_STONE 2
+
+struct UserData {
+	char username[BUFFER_SIZE];
+	int choice;
+};
+
+struct ThreadArgs {
+	int socket;
+	struct UserData user1;
+	struct UserData user2;
+};
+
+void* TCP_connection(void* arg);
 
 
 int main(int argc, char* argv[]) {
 	printf("Started server\n");
 	fflush(stdout);
-	if (argc != 2) {
+	if (argc != 1) {
 		fprintf(stderr, "ERROR: wrong number of arguments\n");
 		fflush(stdout);
 		return -1;
 	}
 
 	/*establish structure*/
-	int tcp_port = atoi(argv[1]);
-	if (tcp_port == 0) {
-		fprintf(stderr, "ERROR: invalid argument(s)\n");
-		fflush(stdout);
-		return -1;
-	}
-	int tcp_socket_temp = socket(PF_INET, SOCK_STREAM, 0);
-	unsigned int tcp_socket;
+	unsigned int tcp_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (tcp_socket < 0) {
 		fprintf(stderr, "ERROR: socket() failed\n");
 		fflush(stdout);
 		return -1;
 	}
-	else { tcp_socket = (unsigned int)tcp_socket_temp; }
-	struct sockaddr_in tcp_server;
-	struct sockaddr_in tcp_client;
+	struct sockaddr_in tcp_server, tcp_client, my_address;
 	tcp_server.sin_family = PF_INET;
 	tcp_server.sin_addr.s_addr = INADDR_ANY;
-	tcp_server.sin_port = htons(tcp_port);
+	tcp_server.sin_port = htons(0);
 	if (bind(tcp_socket, (struct sockaddr*)&tcp_server, sizeof(tcp_server)) < 0) {
 		fprintf(stderr, "ERROR: bind() tcp failed\n");
 		fflush(stdout);
@@ -60,11 +68,15 @@ int main(int argc, char* argv[]) {
 		fflush(stdout);
 		return -1;
 	}
-	int sizeOfTCPserver = sizeof(tcp_server);
-	printf("Listening for TCP connections on port: %d\n", tcp_port);
+	int sizeOfsockaddr = sizeof(tcp_server);
+	getsockname(tcp_socket, (struct sockaddr *)&my_address, &sizeOfsockaddr);
+
+	printf("Listening for TCP connections on port: %d\n", ntohs(my_address.sin_port));
 	fflush(stdout);
 	/*establish structure*/
 
+	fd_set readfds;
+	struct ThreadArgs args;
 	while (1) {
 		FD_ZERO(&readfds);
 		FD_SET(tcp_socket, &readfds);
@@ -77,27 +89,26 @@ int main(int argc, char* argv[]) {
 		}
 		else if (n == 0) { continue; }
 		if (FD_ISSET(tcp_socket, &readfds)) {//incoming TCP connection
-			int new_socket = accept(tcp_socket, (struct sockaddr*)&tcp_client, (socklen_t*)&sizeOfTCPserver);
+			int new_socket = accept(tcp_socket, (struct sockaddr*)&tcp_client, (socklen_t*)&sizeOfsockaddr);
 			printf("Rcvd incoming TCP connection from: %s\n", inet_ntoa((struct in_addr)tcp_client.sin_addr));
 			fflush(stdout);
 			pthread_t tid;
-			if (pthread_create(&tid, NULL, TCP_function, &new_socket) != 0) {
+			args.socket = new_socket;
+			if (pthread_create(&tid, NULL, TCP_connection, &args) != 0) {
 				fprintf(stderr, "ERROR: pthread_create() failed\n");
 				fflush(stdout);
 				return -1;
 			}
 		}
 	}
-
 	return 0;
 }
 
 void* TCP_connection(void* arg) {
 	pthread_detach(pthread_self());
-	int* fd_ptr = (int*)arg;
-	int fd = *fd_ptr;
+	struct ThreadArgs* args = (struct ThreadArgs*)arg;
+	int fd = (*args).socket;
 	char buffer[BUFFER_SIZE];
-	char fileName[32];
 
 	while (1) {
 		int n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
@@ -128,7 +139,7 @@ void* TCP_connection(void* arg) {
 
 			if (1) {
 				//TODO
-				printf("HELLO\n");
+				printf("What is your name?\n");
 			}
 			else {
 				fprintf(stderr, "ERROR: INVALID ACTION\n");
