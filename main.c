@@ -13,6 +13,8 @@
 #include <sys/select.h>
 #include <pthread.h>
 
+#include "zeroconf.h"
+
 #define BUFFER_SIZE 64
 #define MAX_CLIENTS 2
 
