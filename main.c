@@ -28,9 +28,10 @@ struct UserData {
 	char username[BUFFER_SIZE];
 	int choice;
 };
+struct UserData user1;
+struct UserData user2;
 
 struct ThreadArgs {
-	int socket;
 	struct UserData user1;
 	struct UserData user2;
 };
@@ -76,7 +77,6 @@ int main(int argc, char* argv[]) {
 	/*establish structure*/
 
 	fd_set readfds;
-	struct ThreadArgs args;
 	while (1) {
 		FD_ZERO(&readfds);
 		FD_SET(tcp_socket, &readfds);
@@ -90,11 +90,10 @@ int main(int argc, char* argv[]) {
 		else if (n == 0) { continue; }
 		if (FD_ISSET(tcp_socket, &readfds)) {//incoming TCP connection
 			int new_socket = accept(tcp_socket, (struct sockaddr*)&tcp_client, (socklen_t*)&sizeOfsockaddr);
-			printf("Rcvd incoming TCP connection from: %s\n", inet_ntoa((struct in_addr)tcp_client.sin_addr));
+			printf("Rcvd incoming TCP connection from: [%s] on port[%d]\n", inet_ntoa((struct in_addr)tcp_client.sin_addr), tcp_client.sin_port);
 			fflush(stdout);
 			pthread_t tid;
-			args.socket = new_socket;
-			if (pthread_create(&tid, NULL, TCP_connection, &args) != 0) {
+			if (pthread_create(&tid, NULL, TCP_connection, &new_socket) != 0) {
 				fprintf(stderr, "ERROR: pthread_create() failed\n");
 				fflush(stdout);
 				return -1;
@@ -106,9 +105,24 @@ int main(int argc, char* argv[]) {
 
 void* TCP_connection(void* arg) {
 	pthread_detach(pthread_self());
-	struct ThreadArgs* args = (struct ThreadArgs*)arg;
-	int fd = (*args).socket;
+	int* arg_ptr = (int*)arg;
+	int fd = (*arg_ptr);
 	char buffer[BUFFER_SIZE];
+
+	struct UserData* user_ptr = NULL;
+	if (user1.username == "") {
+		user_ptr = &user1;
+		user_ptr->choice = STATE_NO_NAME_NO_CHOICE;
+	}
+	else if (user2.username == "") {
+		user_ptr = &user2;
+		user_ptr->choice = STATE_NO_NAME_NO_CHOICE;
+	}
+	else {
+		fprintf(stderr, "ERROR: 3RD USER IS INVALID\n");
+		fflush(stdout);
+		return NULL;
+	}
 
 	while (1) {
 		int n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
@@ -118,16 +132,13 @@ void* TCP_connection(void* arg) {
 			return NULL;
 		}
 		else if (n == 0) {
-			printf("[child %u] Client disconnected\n", (unsigned int)pthread_self());
+			printf("[Thread %u] Client disconnected\n", (unsigned int)pthread_self());
 			fflush(stdout);
 			close(fd);
 			return NULL;
 		}
 		else {
 			buffer[n] = '\0';
-			char command[5];
-			strncpy(command, buffer, 4);
-			command[4] = '\0';
 
 			char* nextLinePos = strchr(buffer, '\n');
 			if (nextLinePos == NULL) {
@@ -137,16 +148,37 @@ void* TCP_connection(void* arg) {
 				return NULL;
 			}
 
-			if (1) {
-				//TODO
-				printf("What is your name?\n");
-			}
-			else {
-				fprintf(stderr, "ERROR: INVALID ACTION\n");
-				fflush(stdout);
-				return NULL;
+			switch (user_ptr->choice) {
+			case STATE_NO_NAME_NO_CHOICE:
+				handle_NO_NAME_NO_CHOICE(user_ptr, buffer, n);
+				break;
+			case STATE_HAS_NAME_NO_CHOICE:
+				handle_HAS_NAME_NO_CHOICE(user_ptr, buffer, n);
+				break;
+			case STATE_HAS_NAME_HAS_CHOICE:
+				handle_HAS_NAME_HAS_CHOICE(user_ptr, buffer, n);
+				break;
 			}
 		}
 	}
 	return NULL;
+}
+
+void handle_NO_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size) {
+	printf("What is your name?\n");
+	user_ptr->choice = STATE_HAS_NAME_NO_CHOICE;
+}
+
+void handle_HAS_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size) {
+	if (strcmp(buffer, "\n")) {
+		printf("What is your name?\n");
+		return;
+	}
+	printf("Rock, paper, or scissors?\n");
+	user_ptr->choice = STATE_HAS_NAME_HAS_CHOICE;
+	strcpy(user_ptr->username, buffer);
+}
+
+void handle_HAS_NAME_HAS_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size) {
+
 }
