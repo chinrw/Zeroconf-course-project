@@ -58,7 +58,7 @@ DNSServiceErrorType MyDNSServiceRegister(int ipaddr) {
     error = DNSServiceRegister(&serviceRef,
                                0,                  // no flags
                                0,                  // all network interfaces
-                               "laprej",  // name
+                               "qinr",  // name
                                "_rps._tcp",       // service type
                                "local",             // register in default domain(s)
                                NULL,               // use default host name
