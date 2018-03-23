@@ -195,12 +195,14 @@ void *TCP_connection(void *arg) {
 }
 
 void handle_NO_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd) {
-    if (strcmp(buffer, "\n") == 0) {
+    if (isspace(buffer[0])) {
         if (send(fd, str_question_name, strlen(str_question_name), 0) < 0) {
             fprintf(stderr, "Send Failed\n");
         }
         return;
     }
+    buffer[strcspn(buffer, "\n")] = 0;
+
     strcpy(user_ptr->username, buffer);
     user_ptr->state = STATE_HAS_NAME_NO_CHOICE;
     if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
@@ -210,6 +212,11 @@ void handle_NO_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffe
 
 void handle_HAS_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd) {
     buffer[strcspn(buffer, "\n")] = 0;
+
+    for (int i = 0; i < buffer_size; ++i) {
+        buffer[i] = (char) tolower(buffer[i]);
+    }
+
     if (strcmp(buffer, "paper") == 0) {
         user_ptr->choice = CHOICE_PAPER;
     } else if (strcmp(buffer, "scissor") == 0) {
