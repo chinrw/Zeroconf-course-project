@@ -29,6 +29,7 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 struct UserData {
 	char username[BUFFER_SIZE];
+	int state;
 	int choice;
 };
 struct UserData user1;
@@ -115,11 +116,11 @@ void* TCP_connection(void* arg) {
 	struct UserData* user_ptr = NULL;
 	if (strcmp(user1.username, "") == 0) {
 		user_ptr = &user1;
-		user_ptr->choice = STATE_NO_NAME_NO_CHOICE;
+		user_ptr->state = STATE_NO_NAME_NO_CHOICE;
 	}
 	else if (strcmp(user2.username, "") == 0) {
 		user_ptr = &user2;
-		user_ptr->choice = STATE_NO_NAME_NO_CHOICE;
+		user_ptr->state = STATE_NO_NAME_NO_CHOICE;
 	}
 	else {
 		fprintf(stderr, "ERROR: 3RD USER IS INVALID\n");
@@ -155,7 +156,7 @@ void* TCP_connection(void* arg) {
 				return NULL;
 			}
 
-			switch (user_ptr->choice) {
+			switch (user_ptr->state) {
 			case STATE_NO_NAME_NO_CHOICE:
 				handle_NO_NAME_NO_CHOICE(user_ptr, buffer, n, fd);
 				break;
@@ -179,7 +180,7 @@ void handle_NO_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffe
 		return;
 	}
 	strcpy(user_ptr->username, buffer);
-	user_ptr->choice = STATE_HAS_NAME_NO_CHOICE;
+	user_ptr->state = STATE_HAS_NAME_NO_CHOICE;
 	if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
 		fprintf(stderr, "Send Failed\n");
 	}
@@ -207,7 +208,7 @@ void handle_HAS_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buff
 		}
 		return;
 	}
-	user_ptr->choice = STATE_HAS_NAME_HAS_CHOICE;
+	user_ptr->state = STATE_HAS_NAME_HAS_CHOICE;
 }
 
 void handle_HAS_NAME_HAS_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd) {
