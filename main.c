@@ -55,7 +55,7 @@ void handle_HAS_NAME_HAS_CHOICE(struct UserData *user_ptr, char *buffer, int buf
 
 void clean_user_data(struct UserData *user_ptr);
 
-char *getResultStr();
+void getResultStr(char *ret);
 
 void *mdns_service(void *port) {
     // call DNS
@@ -237,17 +237,26 @@ void handle_HAS_NAME_HAS_CHOICE(struct UserData *user_ptr, char *buffer, int buf
     pthread_mutex_lock(&lock);
     user_state++;
     pthread_mutex_unlock(&lock);
+
     while (1) {
-        if (user_state == TWO_USER_FINISHED) { break; }
+        if (user_state == TWO_USER_FINISHED) {
+            printf("here\n");
+            break;
+        }
+        printf("[%d]\n", user_state);
         usleep(10000);
     }
-    char *str = getResultStr();
+
+
+    char *str = calloc(BUFFER_SIZE, sizeof(char));
+    getResultStr(str);
+
     if (send(fd, str, strlen(str), 0) < 0) {
         fprintf(stderr, "Send Failed\n");
     }
-
-    free(str);
+    sleep(1);
     clean_user_data(user_ptr);
+
     close(fd);
     pthread_exit(NULL);
 }
@@ -263,11 +272,10 @@ void clean_user_data(struct UserData *user_ptr) {
 }
 
 
-char *getResultStr() {
+void getResultStr(char *ret) {
     if (user1.choice == user2.choice) {
-        return "Ties";
+        strcpy(ret, "Ties");
     }
-    char *ret = malloc(BUFFER_SIZE);
     if (user1.choice == CHOICE_PAPER && user2.choice == CHOICE_SCISSORS) {
         strcpy(ret, "SCISSORS covers PAPER!\t");
         strcat(ret, user2.username);
@@ -305,6 +313,5 @@ char *getResultStr() {
         strcat(ret, user2.username);
         strcat(ret, "!");
     }
-    return ret;
 }
 
