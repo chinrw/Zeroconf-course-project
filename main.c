@@ -196,39 +196,50 @@ void *TCP_connection(void *arg) {
 	return NULL;
 }
 
-void handle_NO_NAME_NO_CHOICE(struct UserData* user_ptr, char *buffer, int buffer_size, int fd) {
-	if (strcmp(buffer, "\n") == 0) {
-		if (send(fd, str_question_name, strlen(str_question_name), 0) < 0) {
-			fprintf(stderr, "Send Failed\n");
-		}
-		return;
-	}
-	strcpy(user_ptr->username, buffer);
-	user_ptr->state = STATE_HAS_NAME_NO_CHOICE;
-	if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
-		fprintf(stderr, "Send Failed\n");
-	}
+void handle_NO_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd) {
+    if (isspace(buffer[0])) {
+        if (send(fd, str_question_name, strlen(str_question_name), 0) < 0) {
+            fprintf(stderr, "Send Failed\n");
+        }
+        return;
+    }
+    buffer[strcspn(buffer, "\n")] = 0;
+
+    strcpy(user_ptr->username, buffer);
+    user_ptr->state = STATE_HAS_NAME_NO_CHOICE;
+    if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
+        fprintf(stderr, "Send Failed\n");
+    }
 }
 
-void handle_HAS_NAME_NO_CHOICE(struct UserData* user_ptr, char *buffer, int buffer_size, int fd) {
-	buffer[strcspn(buffer, "\n")] = 0;
-	if (strcmp(buffer, "paper") == 0) {
-		user_ptr->choice = CHOICE_PAPER;
-	}
-	else if (strcmp(buffer, "scissor") == 0) {
-		user_ptr->choice = CHOICE_SCISSOR;
-	}
-	else if (strcmp(buffer, "rock") == 0) {
-		user_ptr->choice = CHOICE_ROCK;
-	}
-	else {
-		if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
-			fprintf(stderr, "Send Failed\n");
-		}
-		return;
-	}
-	user_ptr->state = STATE_HAS_NAME_HAS_CHOICE;
-	handle_HAS_NAME_HAS_CHOICE(user_ptr, buffer, buffer_size, fd);
+void handle_HAS_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd) {
+    buffer[strcspn(buffer, "\n")] = 0;
+
+    for (int i = 0; i < buffer_size; ++i) {
+        buffer[i] = (char) tolower(buffer[i]);
+    }
+
+    if (strcmp(buffer, "paper") == 0) {
+        user_ptr->choice = CHOICE_PAPER;
+    } else if (strcmp(buffer, "scissor") == 0) {
+        user_ptr->choice = CHOICE_SCISSOR;
+    } else if (strcmp(buffer, "rock") == 0) {
+        user_ptr->choice = CHOICE_ROCK;
+    } else {
+        if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
+            fprintf(stderr, "Send Failed\n");
+        }
+        return;
+    }
+    user_ptr->state = STATE_HAS_NAME_HAS_CHOICE;
+    pthread_mutex_lock(&lock);
+    user_state++;
+    pthread_mutex_unlock(&lock);
+    while (1) {
+        if (user_state == TWO_USER_FINISHED) break;
+        usleep(10000);
+    }
+    printf("finished\n");
 }
 
 void handle_HAS_NAME_HAS_CHOICE(struct UserData* user_ptr, char *buffer, int buffer_size, int fd) {
