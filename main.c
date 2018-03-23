@@ -13,8 +13,6 @@
 #include <sys/select.h>
 #include <pthread.h>
 
-#include "zeroconf.h"
-
 #define BUFFER_SIZE 64
 #define MAX_CLIENTS 2
 
@@ -112,11 +110,11 @@ void* TCP_connection(void* arg) {
 	char buffer[BUFFER_SIZE];
 
 	struct UserData* user_ptr = NULL;
-	if (user1.username == "") {
+	if (strcmp(user1.username, "") == 0) {
 		user_ptr = &user1;
 		user_ptr->choice = STATE_NO_NAME_NO_CHOICE;
 	}
-	else if (user2.username == "") {
+	else if (strcmp(user2.username, "") == 0) {
 		user_ptr = &user2;
 		user_ptr->choice = STATE_NO_NAME_NO_CHOICE;
 	}
