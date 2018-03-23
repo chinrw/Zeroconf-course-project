@@ -31,13 +31,13 @@ struct UserData {
 struct UserData user1;
 struct UserData user2;
 
-struct ThreadArgs {
-	struct UserData user1;
-	struct UserData user2;
-};
+static char str_question_name[] = "What is your name?\n";
+static char str_question_choice[] = "Rock, paper, or scissors?\n";
 
 void* TCP_connection(void* arg);
-
+void handle_NO_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd);
+void handle_HAS_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd);
+void handle_HAS_NAME_HAS_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd);
 
 int main(int argc, char* argv[]) {
 	printf("Started server\n");
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 		fflush(stdout);
 		return -1;
 	}
-	int sizeOfsockaddr = sizeof(tcp_server);
+	unsigned int sizeOfsockaddr = sizeof(tcp_server);
 	getsockname(tcp_socket, (struct sockaddr *)&my_address, &sizeOfsockaddr);
 
 	printf("Listening for TCP connections on port: %d\n", ntohs(my_address.sin_port));
@@ -124,6 +124,10 @@ void* TCP_connection(void* arg) {
 		return NULL;
 	}
 
+	if (send(fd, str_question_name, strlen(str_question_name), 0) < 0) {
+		fprintf(stderr, "Send Failed\n");
+	}
+
 	while (1) {
 		int n = recv(fd, buffer, BUFFER_SIZE - 1, 0);
 		if (n < 0) {
@@ -150,13 +154,13 @@ void* TCP_connection(void* arg) {
 
 			switch (user_ptr->choice) {
 			case STATE_NO_NAME_NO_CHOICE:
-				handle_NO_NAME_NO_CHOICE(user_ptr, buffer, n);
+				handle_NO_NAME_NO_CHOICE(user_ptr, buffer, n, fd);
 				break;
 			case STATE_HAS_NAME_NO_CHOICE:
-				handle_HAS_NAME_NO_CHOICE(user_ptr, buffer, n);
+				handle_HAS_NAME_NO_CHOICE(user_ptr, buffer, n, fd);
 				break;
 			case STATE_HAS_NAME_HAS_CHOICE:
-				handle_HAS_NAME_HAS_CHOICE(user_ptr, buffer, n);
+				handle_HAS_NAME_HAS_CHOICE(user_ptr, buffer, n, fd);
 				break;
 			}
 		}
@@ -164,21 +168,42 @@ void* TCP_connection(void* arg) {
 	return NULL;
 }
 
-void handle_NO_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size) {
-	printf("What is your name?\n");
-	user_ptr->choice = STATE_HAS_NAME_NO_CHOICE;
-}
-
-void handle_HAS_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size) {
-	if (strcmp(buffer, "\n")) {
-		printf("What is your name?\n");
+void handle_NO_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd) {
+	if (strcmp(buffer, "\n") == 0) {
+		if (send(fd, str_question_name, strlen(str_question_name), 0) < 0) {
+			fprintf(stderr, "Send Failed\n");
+		}
 		return;
 	}
-	printf("Rock, paper, or scissors?\n");
-	user_ptr->choice = STATE_HAS_NAME_HAS_CHOICE;
 	strcpy(user_ptr->username, buffer);
+	user_ptr->choice = STATE_HAS_NAME_NO_CHOICE;
+	if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
+		fprintf(stderr, "Send Failed\n");
+	}
 }
 
-void handle_HAS_NAME_HAS_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size) {
+void handle_HAS_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd) {
+	if (strcmp(buffer, "paper") == 0) {
+		//TODO
+		return;
+	}
+	else if (strcmp(buffer, "scissor") == 0) {
+		//TODO
+		return;
+	}
+	else if (strcmp(buffer, "stone") == 0) {
+		//TODO
+		return;
+	}
+	else {
+		if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
+			fprintf(stderr, "Send Failed\n");
+		}
+		return;
+	}
+	user_ptr->choice = STATE_HAS_NAME_HAS_CHOICE;
+}
+
+void handle_HAS_NAME_HAS_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd) {
 
 }
