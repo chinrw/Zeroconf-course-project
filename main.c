@@ -24,6 +24,9 @@
 #define CHOICE_SCISSOR 1
 #define CHOICE_STONE 2
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+
 struct UserData {
 	char username[BUFFER_SIZE];
 	int choice;
@@ -185,14 +188,17 @@ void handle_NO_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffe
 void handle_HAS_NAME_NO_CHOICE(struct UserData* user_ptr, char* buffer, int buffer_size, int fd) {
 	if (strcmp(buffer, "paper") == 0) {
 		//TODO
+		strcpy(user_ptr->choice, "paper");
 		return;
 	}
 	else if (strcmp(buffer, "scissor") == 0) {
 		//TODO
+		strcpy(user_ptr->choice, "scissor");
 		return;
 	}
 	else if (strcmp(buffer, "stone") == 0) {
 		//TODO
+		strcpy(user_ptr->choice, "stone");
 		return;
 	}
 	else {
