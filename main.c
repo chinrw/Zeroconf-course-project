@@ -63,6 +63,7 @@ void *mdns_service(void *port) {
     int *temp = (int *) port;
     DNSServiceErrorType error = MyDNSServiceRegister(*temp);
     fprintf(stderr, "DNSServiceDiscovery returned %d\n", error);
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]) {
     }
 
     /*establish structure*/
-    unsigned int tcp_socket = socket(PF_INET, SOCK_STREAM, 0);
+    int tcp_socket = socket(PF_INET, SOCK_STREAM, 0);
     if (tcp_socket < 0) {
         fprintf(stderr, "ERROR: socket() failed\n");
         fflush(stdout);
@@ -245,6 +246,7 @@ void handle_HAS_NAME_HAS_CHOICE(struct UserData *user_ptr, char *buffer, int buf
         fprintf(stderr, "Send Failed\n");
     }
 
+    free(str);
     clean_user_data(user_ptr);
     close(fd);
     pthread_exit(NULL);
@@ -254,7 +256,7 @@ void handle_HAS_NAME_HAS_CHOICE(struct UserData *user_ptr, char *buffer, int buf
 void clean_user_data(struct UserData *user_ptr) {
     strcpy(user_ptr->username, "");
     user_ptr->state = STATE_NO_NAME_NO_CHOICE;
-    user_ptr->choice = NULL;
+    user_ptr->choice = -1;
     pthread_mutex_lock(&lock);
     user_state = 0;
     pthread_mutex_unlock(&lock);
@@ -265,7 +267,7 @@ char *getResultStr() {
     if (user1.choice == user2.choice) {
         return "Ties";
     }
-    char ret[BUFFER_SIZE];
+    char *ret = malloc(BUFFER_SIZE);
     if (user1.choice == CHOICE_PAPER && user2.choice == CHOICE_SCISSORS) {
         strcpy(ret, "SCISSORS covers PAPER!\t");
         strcat(ret, user2.username);
