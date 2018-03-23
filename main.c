@@ -24,10 +24,12 @@
 
 #define CHOICE_PAPER 0
 #define CHOICE_SCISSOR 1
-#define CHOICE_STONE 2
+#define CHOICE_ROCK 2
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#define  NO_USER_FINISHED 0
+#define ONE_USER_FINISHED 1
+#define TWO_USER_FINISHED 2
+
 
 struct UserData {
     char username[BUFFER_SIZE];
@@ -36,6 +38,9 @@ struct UserData {
 };
 struct UserData user1;
 struct UserData user2;
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+int user_state = NO_USER_FINISHED;
 
 static char str_question_name[] = "What is your name?\n";
 static char str_question_choice[] = "Rock, paper, or scissors?\n";
@@ -99,8 +104,10 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
     /*establish structure*/
 
+
     fd_set readfds;
     while (1) {
+
         FD_ZERO(&readfds);
         FD_SET(tcp_socket, &readfds);
         int n = select(FD_SETSIZE, &readfds, NULL, NULL, NULL);
@@ -202,18 +209,13 @@ void handle_NO_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffe
 }
 
 void handle_HAS_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd) {
+    buffer[strcspn(buffer, "\n")] = 0;
     if (strcmp(buffer, "paper") == 0) {
-        //TODO
-        strcpy(user_ptr->choice, "paper");
-        return;
+        user_ptr->choice = CHOICE_PAPER;
     } else if (strcmp(buffer, "scissor") == 0) {
-        //TODO
-        strcpy(user_ptr->choice, "scissor");
-        return;
-    } else if (strcmp(buffer, "stone") == 0) {
-        //TODO
-        strcpy(user_ptr->choice, "stone");
-        return;
+        user_ptr->choice = CHOICE_SCISSOR;
+    } else if (strcmp(buffer, "rock") == 0) {
+        user_ptr->choice = CHOICE_ROCK;
     } else {
         if (send(fd, str_question_choice, strlen(str_question_choice), 0) < 0) {
             fprintf(stderr, "Send Failed\n");
@@ -221,6 +223,14 @@ void handle_HAS_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buff
         return;
     }
     user_ptr->state = STATE_HAS_NAME_HAS_CHOICE;
+    pthread_mutex_lock(&lock);
+    user_state++;
+    pthread_mutex_unlock(&lock);
+    while (1) {
+        if (user_state == TWO_USER_FINISHED) break;
+        usleep(10000);
+    }
+    printf("finished\n");
 }
 
 void handle_HAS_NAME_HAS_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd) {
