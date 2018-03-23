@@ -23,7 +23,7 @@
 #define STATE_HAS_NAME_HAS_CHOICE 2
 
 #define CHOICE_PAPER 0
-#define CHOICE_SCISSOR 1
+#define CHOICE_SCISSORS 1
 #define CHOICE_ROCK 2
 
 #define  NO_USER_FINISHED 0
@@ -52,6 +52,8 @@ void handle_NO_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffe
 void handle_HAS_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd);
 
 void handle_HAS_NAME_HAS_CHOICE(struct UserData *user_ptr, char *buffer, int buffer_size, int fd);
+
+void clean_user_data(struct UserData *user_ptr);
 
 char *getResultStr();
 
@@ -108,7 +110,6 @@ int main(int argc, char *argv[]) {
 
     fd_set readfds;
     while (1) {
-
         FD_ZERO(&readfds);
         FD_SET(tcp_socket, &readfds);
         int n = select(FD_SETSIZE, &readfds, NULL, NULL, NULL);
@@ -217,8 +218,8 @@ void handle_HAS_NAME_NO_CHOICE(struct UserData *user_ptr, char *buffer, int buff
 
     if (strcmp(buffer, "paper") == 0) {
         user_ptr->choice = CHOICE_PAPER;
-    } else if (strcmp(buffer, "scissor") == 0) {
-        user_ptr->choice = CHOICE_SCISSOR;
+    } else if (strcmp(buffer, "scissors") == 0) {
+        user_ptr->choice = CHOICE_SCISSORS;
     } else if (strcmp(buffer, "rock") == 0) {
         user_ptr->choice = CHOICE_ROCK;
     } else {
@@ -244,45 +245,59 @@ void handle_HAS_NAME_HAS_CHOICE(struct UserData *user_ptr, char *buffer, int buf
         fprintf(stderr, "Send Failed\n");
     }
 
+    clean_user_data(user_ptr);
+    close(fd);
+    pthread_exit(NULL);
 }
+
+
+void clean_user_data(struct UserData *user_ptr) {
+    strcpy(user_ptr->username, "");
+    user_ptr->state = STATE_NO_NAME_NO_CHOICE;
+    user_ptr->choice = NULL;
+    pthread_mutex_lock(&lock);
+    user_state = 0;
+    pthread_mutex_unlock(&lock);
+}
+
 
 char *getResultStr() {
     if (user1.choice == user2.choice) {
         return "Ties";
     }
     char ret[BUFFER_SIZE];
-    if (user1.choice == CHOICE_PAPER && user2.choice == CHOICE_SCISSOR) {
-        strcpy(ret, "SCISSOR covers PAPER!");
+    if (user1.choice == CHOICE_PAPER && user2.choice == CHOICE_SCISSORS) {
+        strcpy(ret, "SCISSORS covers PAPER!\t");
         strcat(ret, user2.username);
         strcat(ret, " defeats ");
         strcat(ret, user1.username);
         strcat(ret, "!");
     } else if (user1.choice == CHOICE_PAPER && user2.choice == CHOICE_ROCK) {
-        strcpy(ret, "PAPER covers ROCK!");
+        strcpy(ret, "PAPER covers ROCK!\t");
         strcat(ret, user1.username);
         strcat(ret, " defeats ");
         strcat(ret, user2.username);
         strcat(ret, "!");
-    } else if (user1.choice == CHOICE_SCISSOR && user2.choice == CHOICE_PAPER) {
-        strcpy(ret, "SCISSOR covers PAPER!");
+    } else if (user1.choice == CHOICE_SCISSORS && user2.choice == CHOICE_PAPER) {
+        strcpy(ret, "SCISSORS covers PAPER!\t");
         strcat(ret, user1.username);
         strcat(ret, " defeats ");
         strcat(ret, user2.username);
         strcat(ret, "!");
-    } else if (user1.choice == CHOICE_SCISSOR && user2.choice == CHOICE_ROCK) {
-        strcpy(ret, "ROCK covers SCISSOR!");
+    } else if (user1.choice == CHOICE_SCISSORS && user2.choice == CHOICE_ROCK) {
+        strcpy(ret, "ROCK covers SCISSORS!\t");
         strcat(ret, user2.username);
         strcat(ret, " defeats ");
         strcat(ret, user1.username);
         strcat(ret, "!");
     } else if (user1.choice == CHOICE_ROCK && user2.choice == CHOICE_PAPER) {
-        strcpy(ret, "PAPER covers ROCK!");
+        strcpy(ret, "PAPER covers ROCK!\t");
         strcat(ret, user2.username);
         strcat(ret, " defeats ");
         strcat(ret, user1.username);
         strcat(ret, "!");
-    } else if (user1.choice == CHOICE_ROCK && user2.choice == CHOICE_SCISSOR) {
-        strcpy(ret, "ROCK covers SCISSOR!");
+    } else if (user1.choice == CHOICE_ROCK && user2.choice == CHOICE_SCISSORS) {
+        strcpy(ret, "ROCK covers SCISSORS!\t");
         strcat(ret, user1.username);
         strcat(ret, " defeats ");
         strcat(ret, user2.username);
@@ -290,3 +305,4 @@ char *getResultStr() {
     }
     return ret;
 }
+
